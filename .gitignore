@@ -1,0 +1,31 @@
+# 密钥 — 绝不入库
+secrets.env
+*.env
+!*.example.env
+*.key
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 运行时生成
+settings.json
+/tmp/guidecane_tts/
+
+# ROS2 构建产物
+build/
+install/
+log/
+
+# 系统 / 编辑器
+.DS_Store
+*.swp
+.idea/
+
+# 本地编辑器与重复源码归档
+.vscode/
+guidecane-*.tar.gz
+README (2).md

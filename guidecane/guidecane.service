@@ -1,0 +1,18 @@
+[Unit]
+Description=Guide Cane (导盲杖) - lidar + ultrasonic + camera + audio alerts
+After=network.target
+# 复用 COIN-D6 雷达串口 /dev/sc_mini; 与车服务 octr-* 互斥(独占雷达口)
+Conflicts=octr-base.service octr-driver.service
+
+[Service]
+Type=simple
+User=sunrise
+Group=dialout
+SupplementaryGroups=dialout audio video plugdev
+WorkingDirectory=/home/sunrise/guidecane
+ExecStart=/bin/bash /home/sunrise/guidecane/run_guidecane.sh
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

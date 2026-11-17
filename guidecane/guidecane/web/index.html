@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>导盲杖控制台</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>导盲杖控制台</h1>
+    <div id="conn" class="pill">连接中…</div>
+  </header>
+
+  <nav class="tabs">
+    <button data-tab="status" class="active">实时状态</button>
+    <button data-tab="camera">摄像头</button>
+    <button data-tab="calib">雷达标定</button>
+    <button data-tab="params">参数设置</button>
+    <button data-tab="audio">语音测试</button>
+  </nav>
+
+  <!-- 实时状态 -->
+  <section id="tab-status" class="tab active">
+    <div class="cards">
+      <div class="card dir" id="c-front"><h3>前 FRONT</h3><div class="cm">--</div><div class="lv">--</div></div>
+      <div class="card dir" id="c-left"><h3>左 LEFT</h3><div class="cm">--</div><div class="lv">--</div></div>
+      <div class="card dir" id="c-right"><h3>右 RIGHT</h3><div class="cm">--</div><div class="lv">--</div></div>
+      <div class="card dir" id="c-ground"><h3>地面 GROUND</h3><div class="cm">摄像头</div><div class="lv">--</div></div>
+    </div>
+    <div class="row">
+      <div class="worst">当前播报: <span id="worst">--</span></div>
+      <div class="src">
+        数据源:
+        <span id="src-ultra" class="dot">超声波</span>
+        <span id="src-lidar" class="dot">雷达</span>
+        <span id="src-camera" class="dot">摄像头</span>
+      </div>
+    </div>
+    <p class="hint">距离取“同方向多源最小值”。播报方式: <b id="amode">--</b></p>
+
+    <div class="navbox">
+      <h3>可行方向 — 绕行建议</h3>
+      <div class="navreco" id="nav-reco">--</div>
+      <div class="navzones" id="nav-zones"></div>
+      <p class="hint">绿=可通行, 红=受阻(数字为最近障碍 cm)。阈值 NAV_CLEAR_CM 见下。</p>
+    </div>
+
+    <div class="thbox">
+      <h3>报警距离阈值 (cm) — 拖动即时生效</h3>
+      <div id="th-dist"></div>
+    </div>
+  </section>
+
+  <!-- 摄像头 -->
+  <section id="tab-camera" class="tab">
+    <p class="hint">斜装单目相机, 检测<b>前方地面 ROI</b>(绿/黄/红框)内的边缘密度判断有无矮障碍。下方"边缘视图"是算法真正看到的东西, 用它对照着调阈值。</p>
+    <div class="camwrap">
+      <div class="camview">
+        <img id="cam-img" alt="camera" />
+        <div class="camctl">
+          <label><input type="radio" name="camview" value="normal" checked> 实时画面(带ROI)</label>
+          <label><input type="radio" name="camview" value="edges"> 边缘视图(调试)</label>
+          <div>当前判定: <b id="cam-level">--</b> &nbsp; 边缘密度: <b id="cam-ratio">--</b></div>
+          <div class="visionbox">
+            <button id="vision-btn" onclick="visionDescribe()">🔊 识别前方(语音播报)</button>
+            <span id="vision-result" class="msg"></span>
+          </div>
+          <p class="hint">调用 qwen-vl 识别并用语音简短播报前方物体, 不用于避障。物理按钮后续接入。</p>
+        </div>
+      </div>
+      <div class="thbox">
+        <h3>摄像头预警阈值 — 拖动即时生效</h3>
+        <div id="th-cam"></div>
+        <p class="hint">边缘密度超过"提示阈值"→ CAUTION; 同时存在大连通块 → WARN/DANGER。ROI 位置见"参数设置"里的 CAM_ROI。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 雷达标定 -->
+  <section id="tab-calib" class="tab">
+    <p class="hint">把障碍物放在杖体<b>正前方约1米</b>, 点“设为前方”。左右同理(放到杖体左/右侧)。绿=前 蓝=左 橙=右, 阴影为扇区范围。</p>
+    <div class="calibwrap">
+      <canvas id="polar" width="420" height="420"></canvas>
+      <div class="calibctl">
+        <button class="btn-front" onclick="calib('front')">设为前方(最近点)</button>
+        <button class="btn-left" onclick="calib('left')">设为左侧(最近点)</button>
+        <button class="btn-right" onclick="calib('right')">设为右侧(最近点)</button>
+        <hr>
+        <label>前方角度° <input type="number" id="ang-front" step="1"></label>
+        <label>左侧角度° <input type="number" id="ang-left" step="1"></label>
+        <label>右侧角度° <input type="number" id="ang-right" step="1"></label>
+        <label>扇区半角° <input type="number" id="ang-half" step="1"></label>
+        <button onclick="applyAngles()">应用角度</button>
+        <div id="calib-msg" class="msg"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 参数设置 -->
+  <section id="tab-params" class="tab">
+    <div class="paramsbar">
+      <button onclick="saveParams()">保存全部改动</button>
+      <button class="ghost" onclick="loadParams()">重新读取</button>
+      <button class="danger" onclick="resetParams()">恢复默认</button>
+      <button class="ghost" onclick="restartSvc()">重启服务</button>
+      <span id="params-msg" class="msg"></span>
+    </div>
+    <div id="params-groups"></div>
+  </section>
+
+  <!-- 语音测试 -->
+  <section id="tab-audio" class="tab">
+    <div class="switchbox">
+      <h3>播报开关</h3>
+      <label class="sw master">
+        <input type="checkbox" id="sw-mute">
+        <span>静音模式</span>
+        <small>只保留“危险”级播报(安全底线), 其余全部静音</small>
+      </label>
+      <div class="swgrid">
+        <label class="sw"><input type="checkbox" data-grp="danger"><span>危险(报警)</span></label>
+        <label class="sw"><input type="checkbox" data-grp="warn"><span>警告</span></label>
+        <label class="sw"><input type="checkbox" data-grp="caution"><span>注意</span></label>
+        <label class="sw"><input type="checkbox" data-grp="nav"><span>绕行建议</span></label>
+        <label class="sw"><input type="checkbox" data-grp="vision"><span>视觉识别</span></label>
+      </div>
+      <p class="hint">某类关掉即完全不播报(危险也可单独关, 慎用)。静音模式为快捷主开关。</p>
+    </div>
+    <p class="hint">点击试听各方向/级别的播报。修改语音参数(在“参数设置”里的 TTS_*)后会自动重新生成。</p>
+    <div id="audio-grid" class="audiogrid"></div>
+  </section>
+
+  <script src="/app.js"></script>
+</body>
+</html>
